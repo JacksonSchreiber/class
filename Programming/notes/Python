@@ -251,7 +251,10 @@ for i in d.values(): #get values
 for i in d.items(): #return tuple of key, value
 
 
+#VISUAL DEBUGGER (pudb)
 
+sudo apt-get install python3-pudb
+python3 -m pudb.run script.py
 
 
 
