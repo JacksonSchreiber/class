@@ -1,0 +1,11 @@
+#NETWORK FUNDAMENTALS
+    OSI Model
+
+        Data Link Sub Layers
+            MAC (Media Access Control)
+            LLC (Logical Link Control)
+        Ethertype:
+            0800 IPv4
+            0806 ARP
+            86DD IPv6
+            8100 VLAN Tag
