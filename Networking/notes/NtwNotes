@@ -51,6 +51,78 @@
 
 #############PACKET CREATION AND SOCKET PROGRAMMING###########################
 
+    Socket Types
+        Stream Sockets      - Connection oriented and sequenced. TCP, SCTP, Bletooth
+        Datagram Sockets    - Connectionless. UDP
+        Raw Sockets         - Direct sending, receiving of IP packets w/out automatic protocol-specific fwd
+            nmap, tcpdump, scapy
+
+            User Space Sockets      - do not requre elevated privileges
+                tcpdump/wireshark to read file
+                nmap with no switches
+                netcat to connect to listener
+                netcat to create listener above 1024
+                using /dev/tcp or /dev/udp to transmit
+            Kernel Spcae Sockets    - access HW directly, create packets from scratch
+                tcp/wireshark to capture
+                nmap for OS ID or specific flags
+                netcat to create listener in well known port range
+                scapy/python to craft 
+                network devices w/ routing protocols like OSPF
+
+   Python3 Network Programming 
+        Python3 Socket Library and socket.socket function
+
+        import socket
+            s = socket.socket(FAMILY, socket.TYPE, socket.PROTOCOL)
+
+        SOCKET.SOCKET FUNCTION #3 arguments
+            socket.socket([*family*[,*type*[*proto*]]])
+
+        #STREAM SOCKET EX# echo message | nc -lp 54321
+            import socket
+            #This works with s = socket.socket() due to AF_INET and SOCK_STREAM being defaults
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+            ipaddr = '127.0.0.1'
+            port = 54321
+
+            s.connect((ipaddr, port))
+
+            #b sends string as bytes-like object
+            s.send(b'Hello\n')
+
+            #Recommended that buffersize used with recvfrom is power of 2 and not large # of bits
+            response, conn = s.recvfrom(1024)
+
+            #to receive msg sent as a bytes-like-obj must decode into utf-8 (default)
+            print(response.decode())
+            
+            s.close()
+        
+        #DATAGRAM SOCKET EX# echo message | nc -lp 54321 -u
+            import socket
+
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+            ipaddr = '127.0.0.1'
+            port = 54321
+
+
+            s.connect((ipaddr, port))
+
+            s.send(b'Hello\n')
+
+            response, conn = s.recvfrom(1024)
+
+            print(response.decode())
+
+            #don't need to close, its datagram
+
+
+
+
+
 
 
 
