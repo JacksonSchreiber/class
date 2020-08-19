@@ -119,7 +119,50 @@
 
             #don't need to close, its datagram
 
+    RAW IPv4 SOCKETS
+        #For building socket
+        import socket
 
+        #System level commands
+        import sys
+
+
+        #Establish packet structure, allows direct access to functions in struct module
+        from struct import *
+
+        #Create raw socket
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_RAW)
+
+        except socket.error as msg:
+            print(msg)
+            sys.exit()
+
+        packet = ''
+
+        src_ip = "99.99.99.99"
+        dst_ip = "10.3.0.2"
+
+        #Add IPv4 header info
+        ip_ver_ihl = 69    #decimal conversion of 0x45 for version, internet header len
+        ip_tos = 0          #Combines DSCP and ECN fields
+        ip_len = 0          #Kernel will fill in actual length
+        ip_id = 12345       #sets ip ID for the packet
+        ip_frag = 0         #sets fragmentation to off
+        ip_ttl = 64         #determines the TTL when leaving machine
+        ip_proto = 16       #sets IP protocol to 16 (Chaos) If it was 6 (TCP) or 17 (UDP), additional headers would be required
+        ip_check = 0        #Kernel will fill in checksum for packet
+        ip_srcadd = socket.inet_aton(src_ip)
+        ip_dstadd = socket.inet_aton(dst_ip)    #inet_aton(string) converts IP to a 32 bit binary numbers
+
+        ip_header = pack('!BBHHHBBH4s4s' ,ip_ver_ihl, ip_tos, ip_len, ip_id, ip_frag, ip_ttl, ip_proto, ip_check, ip_srcadd, ip_dstadd)
+
+        
+        message = b'mmmmmmessage'
+        packet = ip_header + message
+
+        #Send packet
+        s.sendto(packet, (dst_ip, 0))
 
 
 
