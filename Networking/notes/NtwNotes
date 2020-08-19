@@ -1,11 +1,74 @@
-#NETWORK FUNDAMENTALS
+####################NETWORK FUNDAMENTALS####################################
     OSI Model
 
         Data Link Sub Layers
             MAC (Media Access Control)
             LLC (Logical Link Control)
-        Ethertype:
-            0800 IPv4
-            0806 ARP
-            86DD IPv6
-            8100 VLAN Tag
+            #Ethertype:
+                0800 IPv4
+                0806 ARP
+                86DD IPv6
+                8100 VLAN Tag
+        Transport
+            TCP Flags: CWR ECE URG ACK PSH RST SYN FIN
+            FTP ACTIVE vs Passive. Active can trigger firewall
+
+    TCPDUMP
+        sudo tcpdump -r ids.pcap -vX #for hex dump. -vXX to show ethernet header
+            filter with grep
+            sudo tcpdump -r ids.pcap not tcp port 23 -c 10 #show first 10 packets that arent port 23
+        sudo tcpdump -w write.pcap #make a pcap
+
+    
+    BERKELEY PACKET FILTERS #first byte is always 0
+        tcpdump header[startByte:Offset]
+        OFFSETS: 1, 2, 4
+
+        EX look for Ethertype (byte 13)
+            tcpdump ether[12:2] #12th byte to 14th (including 0)
+        EX look for TTL (9th byte)
+            tcpdump ip[8] #just one byte doesn't need :
+
+        sudo tcpdump "ether[12:2] = 0x0800" -d #bytecode
+            #check how kernel navigates through headers
+        
+        BITWISE MASKING
+            EX look  for just ip version (4 bits of 0th byte)
+                tcpdump ip[0]&0xF0=0x40
+                            get all where first 4 bits of 0th byte = 4 (ipv4)
+            EX TCP flag syn
+                tcpdump tcp[13]&0x3F = 0x02 #exclude the CWR, ECE, look for syn
+            EX TCP christmas scan #URG, PSH, FIN
+                tcpdump tcp[13]&0x3F = 0x29 #look for URG, PSH, FIN bits set
+    CONVERT DSCP to Decimal value       DSCP * 4.
+        DSCP 24 = 96
+
+    LAYER 2 SWITCHING TECHS
+        CAM Table - MAC address table
+        BPDUs used in STP. contains info on ports, addresses, priorities..
+            messages to determine whether to turn off port
+        Discovery Protocol (LLDP, CDP, FDP)
+
+#############PACKET CREATION AND SOCKET PROGRAMMING###########################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

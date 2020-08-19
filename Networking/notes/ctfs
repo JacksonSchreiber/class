@@ -1,0 +1,19 @@
+#CTF Notes
+
+
+#BASIC ANALYSIS
+    BERKELEY PACKET FILTERS
+        ipv4 packets with source port > 1024:
+            "tcp[0:2] > 1024 || udp[0:2] > 1024" 
+        ipv4/6 packets with udp as next protocol:
+            "ip[9] = 17 || ip6[6] = 17"
+        capture packets with ONLY  ACK/RST or ACK/FIN flag set:
+            tcp[13] = 0x14 || tcp[13] = 0x11
+        traffic with VLAN tag:
+            ether[12:2] = 0x8100
+        IPv4 packets relating to DNS:
+            tcp[0:2] = 53 || tcp[2:2] = 53 || udp[0:2] = 53 || udp[2:2] = 53
+        IPv4 packets with DSCP field of 24:
+            ip[1]&0xFC = 96
+        beginning of traceroute being run:
+            ip[8] = 1 && (ip[9] = 1 || ip[9] = 17)
