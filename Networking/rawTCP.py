@@ -3,24 +3,17 @@
 import socket
 import sys
 import binascii
+import array
 
 from struct import *
 
-def checksum(msg):
-    s = 0
- 
-    # loop taking 2 characters at a time
-    for i in range(0, len(msg), 2):
-        w = ord(msg[i]) + (ord(msg[i+1]) << 8 )
-        s = s + w
-                                        
-    s = (s>>16) + (s & 0xffff);
-    s = s + (s >> 16);
-                                                    
-    #complement and mask to 4 byte short
-    s = ~s & 0xffff
-                                                                
-    return s
+def chksum(data):
+    if len(data) % 2 != 0:
+        data += b'\0'
+    res = sum(array.array("H", data))
+    res = (res >> 16) + (res & 0xffff)
+    res += res >> 16
+    return (~res) & 0xffff
 
 try:
     s = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_RAW)
@@ -54,7 +47,7 @@ seq_number = 90210
 ack_number = 30905
 off_res = 80 #size of tcp header
 flags = 2
-window = 0
+window = socket.htons(5840)
 checksum = 0
 urg_ptr = 0
 #options = 0
@@ -62,14 +55,19 @@ urg_ptr = 0
 tcp_header = pack('!HHLLBBHHH', src_port, dst_port, seq_number, ack_number, off_res, flags, window, checksum, urg_ptr)
 
 
-message = 'da message'
-#pseudo header fields
-placeholder = 0
-tcp_length = len(tcp_header) + len(message)
-psh = pack('!4s4sBBH', ip_srcadd, ip_dstadd, placeholder, 6, tcp_length) 
-psh = psh + tcp_header + message;
+message = b'damessage'
 
-tcp_check = checksum(psh)
+#pseudo header fields
+
+placeholder = 0
+protocol = socket.IPPROTO_TCP
+tcp_length = len(tcp_header) + len(message)
+
+psh = pack('!4s4sBBH', ip_srcadd, ip_dstadd, placeholder, protocol, tcp_length) 
+psh = psh + tcp_header + message
+
+print(psh)
+tcp_check = chksum(psh)
 
 #create tcp header again w/ checksum
 
