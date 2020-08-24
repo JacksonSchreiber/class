@@ -164,10 +164,60 @@
         #Send packet
         s.sendto(packet, (dst_ip, 0))
 
+NETWORK RECONNAISSANCE - active, passive, internal, external
+    Passive Recon
+        #IPs, Sub-Domains, 3rd party sites, people and techs, vulnerabilities
+        #WHOIS queries, job site listings, phone nums, passive OS fingerprinting
+
+        whois
+        dig - mail servers, dns servers, SOA, TXT, zone transfers
+            dig SOA
+            dig MX
+            dig TXT     #could be encoded in base64
+            
+            dig axfr @nsztm1.digi.ninja zonetransfer.me #ZONE TRANSFER
+                #   @SOA domain.com
+        netcraft.com - bunch of info on domains
+        wayback/archive.com - website archives
+        *ccboe.net -site:*.ccboe.net    #(in google search) domain association
+        
+        site:*.ccboe.net "Powered by"   #search for technologies used by ccboe (google search)
 
 
+        shodan - website that crawls web to look for unsecure devices
 
+    Network Scanning - Remote to Local, Local to Remote, Local to Local, Remote to Remote
+        nmap -sT 192.168.65.1-30 -p 21,22,23,80 
+        nmap -sV <ip> <ports>
+        nmap -O #os
+        nmap -sP <ip range> #ping sweep
+        nmap -sU <ip range> #udp scan
+           # Full Connect scan (NMAP) is only scan that will work through tunnel
+        idle scan - using proxy to scan for you
+        
+    Commands
+        curl 10.0.0.104 #cats the webpage html. can read txt file
+            curl 10.0.0.104/file.txt
+            curl ftp://10.0.0.104 #use port 21
+        wget -r <ip> #download all files on website. auto put in directory
+            firefox <file>      - view picture files
 
+        netstat -antp
+        ss -antp
+        sudo arp -a
+        
+        #scan with netcat
+        sudo nc -nvzw1 192.168.20.65 21 22 23 80 #z - port scanner, v - verbose, w - wait, n - no dns; only IP
+            or range with 1-25
+        
+        nc BANNER GRAB
+            nc 10.0.0.104 21 #connect to ftp server, possible get banner
+            nc 10.0.0.104 80
+                GET / #get at beginning of directory
+            nc -u <ip> <port> #connect to udp service
+        
+        find / -iname "hint*" 2>/dev/null
+        find / -iname "*pcap" 2>/dev/null
 
 
 
