@@ -13,7 +13,8 @@
             TCP Flags: CWR ECE URG ACK PSH RST SYN FIN
             FTP ACTIVE vs Passive. Active can trigger firewall
 
-    TCPDUMP
+    TCPDUMP - https://packetlife.net/media/library/12/tcpdump.pdf
+
         sudo tcpdump -r ids.pcap -vX #for hex dump. -vXX to show ethernet header
             filter with grep
             sudo tcpdump -r ids.pcap not tcp port 23 -c 10 #show first 10 packets that arent port 23
@@ -38,14 +39,14 @@
                             get all where first 4 bits of 0th byte = 4 (ipv4)
             EX TCP flag syn
                 tcpdump tcp[13]&0x3F = 0x02 #exclude the CWR, ECE, look for syn
-            EX TCP christmas scan #URG, PSH, FIN
+            EX TCP christmas scan (XMAS scan) #URG, PSH, FIN
                 tcpdump tcp[13]&0x3F = 0x29 #look for URG, PSH, FIN bits set
     CONVERT DSCP to Decimal value       DSCP * 4.
         DSCP 24 = 96
 
     LAYER 2 SWITCHING TECHS
         CAM Table - MAC address table
-        BPDUs used in STP. contains info on ports, addresses, priorities..
+        BPDUs used in STP. contains info on ports, addresses, priorities.. Spanning Tree
             messages to determine whether to turn off port
         Discovery Protocol (LLDP, CDP, FDP)
 
@@ -290,6 +291,347 @@ DATA TRANSFER, MOVEMENT, AND REDIRECTION
     ATROPIA (T3) 10.50.27.79 net2_student11
     Pineland T4 10.50.30.62 net2_student11
     T5 10.50.20.155
+
+NETWORK ANALYSIS
+    Fingerprinting and Host ID
+        P0F (Passive OS Fingerprinting) - config in /etc/p0f/p0f.fp
+            sudo p0f -i eth0
+            sudo p0f -r <pcap> #read from pcap
+            sudo p0f -r <pcap> 'src host <ip>' #or just 'host <ip>' for src and dst
+    Network Traffic Sniffing
+        Libpcap, WinPcap, NPCAP
+        Baseline - should be at least 7 days
+            
+        Wireshark
+            HTTP
+                find string USER-AGENT #ctrl f
+                http.request.method=="POST" #or GET
+                http contains "wordpress" #looks for the string "wordpress" within http traffic
+                    data contains "string"
+                !(http contains "user-agent: Mozilla")
+        TCPDUMP - https://packetlife.net/media/library/12/tcpdump.pdf
+            sudo tcpdump -vvXX #show data and ethernet header, plain text (telnet)
+            sudo tcpdump -nvvX -r <pcap> 'port 53'            
+            sudo tcpdump -r <pcap> | wc -l #packet count        don't use -v or X or anything
+
+        Methods of data collection
+            TAP - inline, should collect everything
+            SPAN - passive, may not collect everything
+            ARP Spoofing (MiTM)
+
+
+        Anomaly Detection 
+            Indicator of Attack (IOA)
+                Proactive (attack currently happening)
+            Indicator of Compromise (IOC)
+                Reactive (after attack)
+                forensic evidence..
+            Indicators
+                .exe, NOP sled (x90...), Repeated Letters, Signatures, Mismatched protocols, Unusual traffic, large amounts of traffic/unusual times
+
+    Decoding
+        cyberchef
+        base64 -d
+        file -i <file> #see what kind of file something is 
+
+        xxd symbol.png symbolenc.png #make hex dump
+        xxd -r symbolenc.png symboldec.png #convert back
+
+        echo "flag" | md5sum
+
+
+NETWORK TRAFFIC FILTERING
+    Network Device Operation Modes
+        Routed
+        Transparent
+    IPTABLES # options slide 8.5, modify 8.7    flushing will not remove drop/accept policies (will lock you out)
+        
+
+        iptables -F <CHAIN> #flush
+
+        ACTIONS: accept, drop, reject (drop then send message)
+        iptables -t [table] -A [chain] [rules] -j [action] #use filter table
+
+        iptables -L --line-number #list all.    -v to see how many packets/bytes on each rule (-Z resets)
+        
+        MANGLE TABLE
+            
+            make ping response be different ttl
+                sudo iptables -t mangle -A POSTROUTING -j TTL --ttl-set 128 #make box appear to be windows
+                sudo iptables -t mangle -L --line-numbers #list mangle table
+                sudo iptables -t mangle -D POSTROUTING 1 #deletes rule
+
+        CHAIN-TYPES
+            filter - filter packets, used with arp bridge ip ip6, inet
+            route - ip and ipv6
+            nat
+        HOOKS
+            PREROUTING, POSTROUTING, INPUT, OUTPUT, FORWARD, INGRESS
+        ex. change default policy for input and output to drop
+            sudo iptables -P INPUT DROP # change back to accept if deleting rules
+            sudo iptables -P OUTPUT DROP
+
+        sudo iptables-save > savediptables.conf #save iptables config
+        sudo iptables-restore < savediptables.conf -v
+
+        ALLOW SSH (new and established)
+            sudo iptables -A INPUT -p tcp --dport 22 -m state --state NEW,ESTABLISHED -j ACCEPT # -m state matches the --state NEW,ESTABLISHED
+        
+        ALLOW ICMP (incoming and outgoing)
+            iptables -A INPUT -p icmp --icmp-type 8 -s 10.10.0.40 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT #icmp type 8 (request)
+            iptables -A OUTPUT -p icmp --icmp-type 0 -d 10.10.0.40 -m state --state ESTABLISHED,RELATED -j ACCEPT
+        OPEN MULTIPLE PORTS
+            sudo iptables -A INPUT -p tcp -m state --state NEW,ESTABLISHED -m multiport --dports 22,23,3389 -j ACCEPT
+        TERMINATOR ALLOW
+            sudo iptables -A INPUT -p tcp -m multiport --ports 6010,6011,6012
+    NFTABLES - flushing will remove drop/accept policies (won't lock you out) 
+        1. CREATE TABLE
+            nft add table [family] [table]
+                nft add table ip HEADER
+
+                #sudo nft list ruleset -a
+                table ip HEADER {
+                }
+
+        2. CREATE BASE CHAIN
+            nft add chain [family] [table] [chain] { type [type] hook [hook] priority [priority] \; policy [policy] \;}
+                [chain] = name of chain 
+                [type] = filter, route or nat
+                [hook] = prerouting, ingress...
+                [priority] = integer. lower num = high priority. default = 0. -- before negative
+                ; [policy] ; = set policy for chain. accept or drop
+
+
+                sudo nft add chain ip HEADER input { type filter hook input priority 0 \; policy accept \;}
+                sudo nft add chain ip HEADER output { type filter hook output priority 0 \; policy accept \;}
+                
+              
+                #sudo nft list ruleset -a
+                table ip HEADER {
+                	chain input {
+		                type filter hook input priority 0; policy accept;
+	                }
+
+	                chain output {
+		                type filter hook output priority 0; policy accept;
+	                }
+                }
+
+        3. CREATE RULE IN CHAIN
+            nft add rule [family] [table] [chain] [matches (matches)] [statement]
+                [matches] = protocol header (ip, ip6, udp, tcp.... icmp, ether)
+                (matches) = specific to [matches] field
+                [statement] = actions when packet is matched. log, accept, drop, reject, counter, nat
+                
+
+                sudo nft insert rule ip HEADER input tcp dport 22 accept
+                sudo nft insert rule ip HEADER output tcp dport 22 accept
+                sudo nft insert rule ip HEADER input tcp sport 22 accept
+                sudo nft insert rule ip HEADER output tcp sport 22 accept
+
+                #sudo nft add rule ip CCTC input tcp dport { 22, 23, 3389 } ct state new,established accept
+                    ct state <states>
+
+                #sudo nft list ruleset -a
+                table ip HEADER {
+	                chain input {
+		                type filter hook input priority 0; policy accept;
+		                tcp sport ssh accept
+		                tcp dport ssh accept
+	                }
+
+	                chain output {
+		                type filter hook output priority 0; policy accept;
+		                tcp sport ssh accept
+		                tcp dport ssh accept
+	                }
+                }
+        
+        4. CHANGE DEFAULT POLICY
+            sudo nft add chain ip HEADER input { type filter hook input priority 0 \; policy drop \;}
+            sudo nft add chain ip HEADER output { type filter hook output priority 0 \; policy drop \;}
+
+            table ip HEADER {
+	                chain input {
+		                type filter hook input priority 0; policy drop;
+		                tcp sport ssh accept
+		                tcp dport ssh accept
+	                }
+
+	                chain output {
+		                type filter hook output priority 0; policy drop;
+		                tcp sport ssh accept
+		                tcp dport ssh accept
+	                }
+                }
+        5. BLOCK, ALLOW SPECIFIC IP
+
+            sudo nft add rule ip HEADER input ip saddr 172.16.82.112 drop #add puts the rule on the bottom  REDUNDANT, NOT NEEDED because policy is to drop
+            sudo nft add rule ip HEADER output ip daddr 172.16.82.112 drop
+
+            sudo nft insert rule ip HEADER output ip daddr 10.10.0.40 accept #insert puts on top    accepts all traffic
+            sudo nft insert rule ip HEADER input ip saddr 10.10.0.40 accept
+
+            #sudo nft add rule ip HEADER input position 10 ip saddr 172.16.82.112 drop          insert after position 10 (sudo nft list ruleset -a      shows line numbers)
+            
+            #sudo nft add rule ip HEADER input position 10 ip saddr 172.16.82.112 counter drop          count dropped packets
+
+            table ip HEADER {
+	            chain input {
+		            type filter hook input priority 0; policy drop;
+		            ip saddr 10.10.0.40 accept # handle 10
+		            tcp dport ssh accept # handle 5
+		            tcp sport ssh accept # handle 3
+		            ip saddr 172.16.82.112 drop # handle 7
+	            }
+
+	            chain output {
+		            type filter hook output priority 0; policy drop;
+		            ip daddr 10.10.0.40 accept # handle 9
+		            tcp sport ssh accept # handle 6
+		            tcp dport ssh accept # handle 4
+		            ip daddr 172.16.82.112 drop # handle 8
+	            }
+            }
+        OTHER NFTABLE STUFF
+            allow icmp
+                sudo nft add rule ip CCTC input icmp type echo-request accept
+                sudo nft add rule ip CCTC input icmp type echo-reply accept
+                sudo nft add rule ip CCTC output icmp type echo-request accept
+                sudo nft add rule ip CCTC output icmp type echo-reply accept
+            
+            allow ports 22, 23l 3389 (new,established)
+                sudo nft add rule ip CCTC input tcp dport { 22, 23, 3389 } ct state new,established accept
+
+        Modify NFTables
+            nft {list | flush} ruleset -a 
+            nft {delete | list | flush} table [family] [table]
+            nft {delete | list | flush} chain [family] [table] [chain]
+
+
+            nft list table [family] [table] [-a]
+
+            ADD after position:
+                nft add rule [family] [table] [chain] [position <position>] [matches (matches)] [statement]
+            INSERT before position:
+                nft insert rule [family] [table] [chain] [position <pos>] [matches (matches)] [statement]
+            REPLACES rule at handle
+               nft replace rule [family] [table] [chain] [handle <handle>] [matches (matches)] [statement] 
+
+
+    
+
+
+    NAT
+        NFTABLES
+            0. ENABLE IP FWDING
+                sudo bash -c 'echo 1 > /proc/sys/net/ipv4/ip_forward'
+
+            1. CREATE NAT TABLE
+                nft add table ip NAT
+            2. CREATE NAT CHAINS
+                nft add chain ip NAT PREROUTING {type nat hook prerouting priority 0 \; }
+                nft add chain ip NAT POSTROUTING {type nat hook postrouting priority 100 \; }
+            3. CREATE NAT RULES
+                sudo nft add rule ip NAT POSTROUTING ip saddr 192.168.3.0/24 oif eth0 masquerade #saddr is natted ntw
+        IPTABLES
+            1. ENABLE IP FWDING
+                sudo bash -c 'echo 1 > /proc/sys/net/ipv4/ip_forward'
+            2.
+                sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+            3. CHANGE DEFAULT GTW ON HOST BEING NATTED
+                sudo route add default gw 192.168.1.1 #for routing. not always necessary
+
+
+    VYOS as a firewall
+        Basic commands:
+            
+            configure #config mode
+
+            exit # back to user mode
+
+            show configuration #view config
+
+        ACLs (implicit deny)    slides 16
+            Numbered Standard   1-99, 1300-1999 (expanded)  *furthest from the source addr
+                filters on source addr only (blocks all protocols)
+            Numbered Extended   100-199, 2000-2699 (expanded)  *closest to the source
+                filters on source, dest, protocol (ip, icmp, tcp...)
+            Named Standard and Extended
+                same filters as standard/extended
+
+
+            EX
+                configure
+                set firewall name BLUE
+                set firewall name BLUE default-action accept #implicitly allow
+                set firewall name BLUE rule 100 action drop #make action of all rule 100 to drop
+                set firewall name BLUE rule 100 destination address 172.16.82.112 #drop
+                set firewall name BLUE rule 100 source address 10.10.0.40
+                set firewall name BLUE rule 100 protocol tcp
+                set firewall name BLUE rule 100 destination port 22
+                set int ethernet eth0  firewall in name BLUE
+                commit
+
+    IDS and IPS
+        SNORT   slides 19
+            [action] [protocol] [s.ip] [s.port] [direction] [d.ip] [d.port] ( match conditions ;)
+                Action - such as alert, log, pass, drop, reject
+
+                Protocol - includes TCP, UDP, ICMP and others
+
+                Source IP address - single address, CIDR notation, range, or any
+
+                Source Port - one, multiple, any, or range of ports
+
+                Direction - either inbound or in and outbound
+
+                Destination IP address - options mirror Source IP
+
+                Destination port - options mirror Source port
+
+            Run snort
+                log files: /var/log/snort
+                rules files: /etc/snort/rules
+                sudo snort -D -c /etc/snort/snort.conf #start snort
+                sudo snort -T -c /etc/snort/snort.conf #test to see if works
+                sudo snort -r <pcap> -c /etc/snort/snort.conf #read from pcap
+                kill snort process before reading from file
+
+            Example snort rules:
+                Find any icmp packet with 0xDEADBEEF as content
+                    alert icmp any any -> any any (msg: "Cows"; content: "|DEAD BEEF|"; sid:1000001; rev:1)
+                Find any icmp echo requests going to 10.3.0.0/24 ntw
+                    alert icmp any any -> 10.3.0.0/24 any (msg: "DMZ Ping"; itype:8; icode:0; sid:1000002;)
+                Find SSH Bruteforce attempts (3 ssh authentication attempts within 10 seconds coming from a Specific Source)
+                   alert tcp any any -> any 22 (msg: "SSH Bruteforce attempt"; threshold:type both, track by_src, count 3, seconds 10; sid:1000004; rev:1;) 
+                Sort IP protocol and rdp going to/from 10.1.0.0/16
+                    alert ip any any <> 10.1.0.0/16 3389 (msg: "RDP"; sid:1000005; rev:1)
+                Find TCP Null Scan
+                    alert tcp any any <> 10.3.0.0/24 any (msg: "Null Scan"; flags:0; sid:1000006; rev:1)
+                Find all SMB and CIFS traffic going to 10.0.0.0/8 no matter the traffic flow state
+                    alert tcp any any -> 10.0.0.0/8 139 (msg: "WannaCry"; flow:stateless; sid:1000007; rev:1)
+                    alert tcp any any -> 10.0.0.0/8 445 (msg: "WannaCry"; flow:stateless; sid:1000008; rev:1)
+                    alert udp any any -> 10.0.0.0/8 137 (msg: "WannaCry"; flow:stateless; sid:1000009; rev:1)
+                    alert udp any any -> 10.0.0.0/8 138 (msg: "WannaCry"; flow:stateless; sid:1000010; rev:1)
+                    alert tcp any any -> 10.0.0.0/8 137 (msg: "WannaCry"; flow:stateless; sid:1000011; rev:1)
+                    alert tcp any any -> 10.0.0.0/8 138 (msg: "WannaCry"; flow:stateless; sid:1000012; rev:1)
+                    alert udp any any -> 10.0.0.0/8 139 (msg: "WannaCry"; flow:stateless; sid:1000013; rev:1)
+                    alert udp any any -> 10.0.0.0/8 445 (msg: "WannaCry"; flow:stateless; sid:1000014; rev:1)
+
+10.50.31.12
+
+
+
+172.16.220.65 T3
+
+
+
+
+
+
+
+
 
 
 
