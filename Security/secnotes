@@ -1,0 +1,26 @@
+SCANNING AND RECON
+
+    Python Scrapping - data collection 
+        sudo apt install python3-pip
+        sudo pip3 install lxml
+        sudo pip3 install requests
+
+
+        from python terminal:
+            import lxml.html #parse html
+            import requests
+
+            page = requests.get('http://quotes.toscrape.com')
+            tree = lxml.html.fromstring(page.content)
+
+            authors = tree.xpath('//small[@class="author"]/text()') #store all authors of page
+
+    Scanning
+        Host Enumeration:
+            sudo nmap -sS -Pn 172.20.24.84 -p 21,22,80,443
+        Host Interrogation
+            nc -v <ip> <port> #banner grab
+            nmap -sV <ip> <port>
+
+            nikto -h <ip> -p <port> #open source vuln scan
+    NMAP scripting engine (NSE) #/usr/share/nmap/scripts/
