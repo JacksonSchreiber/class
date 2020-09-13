@@ -1,0 +1,178 @@
+#Reverse Engineering notes from "Reverse Engineering for Beginners"
+
+CPU
+    ISA - Instruction Set Architecture      each CPU has their own
+        instruction - Command to CPU
+    GPR - General Purpose Register          8 in x86,   16 in x86-64,   16 in ARM
+
+The Stack
+    Starts at bottom (highest addr), builds up (lower addr)
+    
+Registers (x86 64) - 64 bit variables
+    rip         - Instruction Pointer       What Executes next
+
+    Stack Pointers - keeps track of the stack frame of the Currently Executing Function:
+        rsp     - Stack Pointer (top of stack addr)
+        rbp     - Base Pointer (bottom)
+
+    General Purpose:
+        rax     - usually used for return values
+        rbx
+        rcx
+        rdx
+
+    Data:
+        rsi     - Source Index
+        rdi     - Destination Index
+
+    Others:
+        r8-15
+
+    Address different parts of a register:
+        0x1122334455667788
+          ================  rax (64 bits)
+                  ========  eax (32 bits)
+                      ====  ax  (16 bits)
+                      ==    ah  (8 bits)
+                        ==  al  (8 bits)
+
+    System Calls #https://en.wikibooks.org/wiki/X86_Assembly/Interfacing_with_Linux:
+        rax     - syscall number
+        rdi     - arg0
+        rsi     - arg1
+        rdx     - arg2
+        r10     - arg3
+        r8      - arg4
+        r9      - arg5
+    
+    Function Calls / Library Calls
+        rax     - return value
+        rdi     - arg0
+        rsi     - arg1
+        rdx     - arg2
+        rcx     - arg3
+        r8      - arg4
+        r9      - arg5
+
+Assembly Instructions
+    Intel   <instruction>   <dst>, <src>
+    AT&T    <instruction>   <src>, <dst>
+
+    Instructions:
+        push    <S>     #push source onto stack
+        pop     <D>     #pop top of stack (rsp) into destination
+        lea     <D> <S> #Load Effective Address     puts addr of S into D 
+
+    Effects of Instructions:
+        Sets CPU flags
+            ZF      - zero flag
+                    used with cmp, jump, test
+        Do stuff to stack:
+            push, pop, call, leave, ret
+
+    Control Flow - modify instruction pointer:
+        call        - set rip to starting addr of function being called
+        jump        - set rip to anywhere?
+
+
+Function Prologue and Epilogue
+    1.) call    <address>       #push return addr and jump to specified location
+            same as:
+                push    rip+len(instruction)    #push return addr (one past the call)
+                jmp     <address>
+
+    2.) Function Prologue - sets up a new stack frame:
+            push    rbp         #saves the current rbp to stack
+            mov     rbp, rsp    #set rbp = rsp (making the stack 0 bytes in size)
+            sub     rsp, 0x20   #sets rsp higher, making gap between rsp and rbp
+
+    3.) Function Epilogue
+            leave
+                same as:
+                    mov     rsp, rbp    #moves top of stack down to rbp
+                    pop     rbp
+            ret
+                same as:
+                    pop     rip
+
+Little Endian (strings will be backwards, memory addr look correct)
+    Pointer             Data
+    0x7ffe89cd1cc0      0x77202c6f6c6c6548
+    0x7ffe89cd1cc8      0x00000021646c726f 
+
+    c0 --> 0x48
+    c1 --> 0x65
+    cc --> 0x21
+
+
+CONFIG radare2 FOR DEBUGGING
+
+    Setup STDIO: https://reverseengineering.stackexchange.com/questions/16428
+
+    Commands
+        aaa                 #analyze all functions and references
+        ?                   #do math, see contents of object, help
+            #ex.    ? obj.something     ? rbp-rsp
+        px<owq> <len in bytes> @ <obj name> #get addr and hexdump of some object    ex. pxq 16 @ obj.something
+        Breakpoints:
+            db <addr/sym>   #breakpoint     ex.  db main
+            dc              #continue until next b
+            ds              #step instructions and into calls
+            dso             #step instructions and over calls
+            dcr             #continue until ret instruction     (get back to function)
+        
+        Visual Mode (V):
+            c               #enter/exit cursor mode
+                hjkl            #navigate
+                b               #set breakpoint
+                wx              #(in write mode) write bytes
+                wa              #(in write mode) write assembly
+            u               #undo seek 
+            s               #step into
+            S               #step over
+            .               #to seek to rip (instruction pointer)
+            _               #view CPU flags
+
+            :               #enter cmd mode (all other radare commands will work)
+
+
+
+
+
+
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
