@@ -1,5 +1,20 @@
 #Reverse Engineering notes from "Reverse Engineering for Beginners"
 
+Static  Analysis
+    File headers, Hashes, Loaded Objects, Functions, Strings..
+    
+    objdump -d <file>   #dump assembly
+        grep @          #libraries loaded. see what language file is
+        grep call       #functions w/out the @ are local to this program
+    strings <file>
+
+Dynamic Analysis
+    Program Execution Flow
+    Expected Input/Output
+    What a program interacts with
+    gdb-peda
+
+
 CPU
     ISA - Instruction Set Architecture      each CPU has their own
         instruction - Command to CPU
@@ -15,7 +30,7 @@ Registers (x86 64) - 64 bit variables
         rsp     - Stack Pointer (top of stack addr)
         rbp     - Base Pointer (bottom)
 
-    General Purpose:
+    General Purpose/Special Function:
         rax     - usually used for return values
         rbx
         rcx
@@ -141,31 +156,71 @@ CONFIG radare2 FOR DEBUGGING
 
 
 
+GDP-PEDA
+    file <program>  #load program
+    info functions  #dump functions
+    disass <function>   #dissassemble function (not running it)
 
 
 
 
-
+Common? C Functions:
+    sscanf(...)
+    fgets(...)
+    getenv(...)
+    strcmp(...)
+    fopen(...)
+        takes 'r', 'w'... parameters
+    gets()  - vulnerable to buffer overflow
         
 
 
 
+Buffer Overflow
+
+    OS controlled
+        ASLR    - randomizes memory layout of a program's execution
+
+    Compiler controlled
+        NX bit  - prevent code exe inside the stack
+        PIE/PIC - removes absolute address of Global Offset Table
+
+        Stack Canaries / Stack Cookie put before the base pointer on the stack. If modified, program will crash
+            Segment Registers (GS/FS) create these
 
 
+    gets()  - takes unbound input
+    fgets() - take bound input
 
+        char var1 [64] #64 bytes allocated
+        fgets(var1,512,stdin)   #can take 512 bytes. overwrite 
 
+    Check if ASLR is enabled
+        cat /proc/sys/kernel/randomize_va_space
+            0 - off
+            1 - some randomization
+            2 - full randomization
 
+    Fuzzing - sending random but targeted input to binary
+    
 
+    1.) disable ASLR    echo 0 | sudo tee /proc/sys/kernel/randomize_va_space
 
+    2.) make a buffer
+        sudo apt install nasm
+        gdb-peda:
+            pattern_create 100
 
+            file <program>  #run
+            run
+            {copy and paste pattern}
+            pattern_offset <whatever EIP was>       #62
 
+            pattern_create <len of new pattern>
 
-
-
-
-
-
-
+            break * main
+            info proc map           #list of accessible areas in memories
+            asmsearch "jmp esp"     #find virtual memory addr that points to jmp esp (ffe4)
 
 
 

