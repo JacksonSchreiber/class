@@ -219,8 +219,12 @@ Buffer Overflow
             pattern_create <len of new pattern>
 
             break * main
+
+
             info proc map           #list of accessible areas in memories
             asmsearch "jmp esp"     #find virtual memory addr that points to jmp esp (ffe4)
+            asmsearch "call esp"
+            break * <addr that jmp/call esp is at>
             
 
 
@@ -253,7 +257,7 @@ Buffer Overflow
                 print(buffer + esp)
 
             file <program>
-            breakpoint * 0x56555683            
+            break * 0x56555683            
             r < exp
 
             3.) NOP sled
@@ -270,10 +274,14 @@ Buffer Overflow
 
 
 
+MSFCONSOLE
+    use payload/linux/x86/exec
+    show options
 
+    set CMD whoami
 
-
-
+    remove bad characters:
+        generate -b "0x00","0x09","0x0a","0x0d","0xff" -f python
 
 
 

