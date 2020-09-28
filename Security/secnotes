@@ -295,6 +295,10 @@ LINUX PRIVELEGE ESCALATION
         
         find /var/spool/cron/crontabs /etc/cron* -writable -ls  #find all crons that you can modify
 
+    /etc/sudoers
+        give users sudo access
+
+
     Kernel vulnerabilities 
         uname -a, google
 
